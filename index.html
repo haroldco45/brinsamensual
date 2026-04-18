@@ -178,7 +178,7 @@ async function cargarDesdeGitHub(){
     if(!resp.ok) throw new Error('No se pudo cargar el archivo ('+resp.status+')');
     const buf = await resp.arrayBuffer();
     const wb = XLSX.read(buf, {type:'array'});
-    const sh = wb.SheetNames.find(s=>s.toLowerCase().includes('brinsa'))||wb.SheetNames[0];
+    const sh = wb.SheetNames.find(s=>s.toLowerCase()==='brinsamensual') || wb.SheetNames.find(s=>s.toLowerCase().includes('brinsa')&&!s.toLowerCase().includes('hoja')) || wb.SheetNames[0];
     const raw = XLSX.utils.sheet_to_json(wb.Sheets[sh], {defval:0});
     mesLabel = 'BRINSA';
     procesarDatos(raw);
@@ -219,7 +219,7 @@ function cargarXLSX(input){
   rd.onload=e=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
-      const sh=wb.SheetNames[0];
+      const sh=wb.SheetNames.find(s=>s.toLowerCase()==='brinsamensual')||wb.SheetNames.find(s=>s.toLowerCase().includes('brinsa')&&!s.toLowerCase().includes('hoja'))||wb.SheetNames[0];
       const raw=XLSX.utils.sheet_to_json(wb.Sheets[sh],{defval:0});
       procesarDatos(raw);
     }catch(err){
@@ -314,6 +314,7 @@ function renderApp(){
       <button class="abtn abtn-info" onclick="abrirInforme()">📄 Informe</button>
       <button class="abtn abtn-print" onclick="window.print()">🖨️ Imprimir</button>
       <button class="abtn abtn-xl" onclick="exportarExcel()">📊 Excel</button>
+      <button class="abtn" style="background:#7b1fa2;color:#fff" onclick="enviarJulieth()">👩‍💼 Julieth</button>
     </div>
     <div class="tbl-wrap" id="tbl-wrap"></div>`;
   renderTabla();
@@ -575,6 +576,67 @@ function exportarExcel(){
   // Detalle
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([...FILTRADA].sort((a,b)=>b.vb-a.vb).map(d=>({Vendedor:d.vd,Nombre:nomV(d.vd),Ubicacion:d.ubi||'Sin Ubic.',Referencia:d.ref,Producto:d.nom,'Ventas Brutas':d.vb,'Devoluciones':d.dv,'Ventas Netas':d.vb-d.dv,'% Dev':pct(d.dv,d.vb).toFixed(2)+'%'}))),'Detalle');
   XLSX.writeFile(wb,`BRINSA_${mesLabel}_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// ── MENSAJE JULIETH (todos los vendedores) ──
+function enviarJulieth(){
+  const mv={};
+  FILTRADA.forEach(d=>{
+    if(!mv[d.vd])mv[d.vd]={vd:d.vd,vb:0,dv:0,ubis:{}};
+    mv[d.vd].vb+=d.vb; mv[d.vd].dv+=d.dv;
+    if(!mv[d.vd].ubis[d.ubi])mv[d.vd].ubis[d.ubi]={vb:0,dv:0};
+    mv[d.vd].ubis[d.ubi].vb+=d.vb; mv[d.vd].ubis[d.ubi].dv+=d.dv;
+  });
+  const vds=Object.values(mv).sort((a,b)=>b.vb-a.vb);
+  const tV=vds.reduce((a,r)=>a+r.vb,0);
+  const tD=vds.reduce((a,r)=>a+r.dv,0);
+  const tN=tV-tD;
+
+  let msg=`🧴 *INFORME BRINSA — ${mesLabel}*
+`;
+  msg+=`📊 *RESUMEN GENERAL*
+`;
+  msg+=`Ventas brutas: $${fmt(tV)}
+`;
+  msg+=`Devoluciones: -$${fmt(tD)}
+`;
+  msg+=`*Ventas netas: $${fmt(tN)}*
+`;
+  msg+=`% Dev: ${pct(tD,tV).toFixed(2)}%
+
+`;
+  msg+=`━━━━━━━━━━━━━━━━━━━━
+`;
+  msg+=`👥 *POR VENDEDOR:*
+
+`;
+
+  vds.forEach((r,i)=>{
+    const vn=r.vb-r.dv;
+    const pp=pct(r.dv,r.vb);
+    msg+=`*${i+1}. ${r.vd} - ${nomV(r.vd)}*
+`;
+    // Ubicaciones ordenadas mayor a menor
+    const ubis=Object.entries(r.ubis).sort((a,b)=>b[1].vb-a[1].vb);
+    ubis.forEach(([ubi,u])=>{
+      msg+=`  📦 ${ubi||'Sin Ubic.'}: $${fmt(u.vb-u.dv)}`;
+      if(u.dv>0) msg+=` (Dev: -$${fmt(u.dv)})`;
+      msg+=`
+`;
+    });
+    msg+=`  💰 *Neto: $${fmt(vn)}*`;
+    if(pp>0) msg+=` | ${pp.toFixed(1)}% dev`;
+    msg+=`
+
+`;
+  });
+
+  msg+=`━━━━━━━━━━━━━━━━━━━━
+`;
+  msg+=`_Distrileco Caucasia · Vibras Positivas HM_`;
+
+  const celJulieth='3135780204';
+  window.open(`https://wa.me/57${celJulieth}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
 // ── MODAL ──
