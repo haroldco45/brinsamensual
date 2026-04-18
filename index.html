@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>BRINSA — Informe Ventas Distrileco</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --az:#0f2744;--az2:#1a3a5c;--oro:#f0a500;--verde:#00b248;--rojo:#e53935;
+  --brinsa:#e8001c;--brinsa2:#ff4444;
+  --fondo:#f0f2f5;--blanco:#fff;--gris:#e0e6ed;--sub:#7b8a9a;--texto:#1a2533;
+  --sombra:0 2px 12px rgba(0,0,0,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--fondo);color:var(--texto);min-height:100vh}
+
+/* TOPBAR */
+.topbar{background:linear-gradient(135deg,#8b0000 0%,var(--brinsa) 60%,#ff6600 100%);color:#fff;padding:12px 14px;position:sticky;top:0;z-index:200;box-shadow:0 3px 14px rgba(200,0,0,.35)}
+.topbar-row1{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.app-title{font-size:16px;font-weight:900;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.brinsa-badge{background:rgba(255,255,255,.25);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700}
+.topbar-btns{display:flex;gap:6px}
+.tbtn{border:none;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;padding:6px 11px;display:flex;align-items:center;gap:4px}
+.tbtn:active{opacity:.75}
+.tbtn-white{background:rgba(255,255,255,.25);color:#fff}
+.tbtn-gold{background:var(--oro);color:#fff}
+
+/* FILTROS */
+.hdr-filtros{display:flex;gap:8px;flex-wrap:wrap}
+.fgrp{display:flex;flex-direction:column;gap:2px;flex:1;min-width:100px}
+.flabel{font-size:9px;text-transform:uppercase;letter-spacing:.5px;opacity:.7}
+.fsel{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);color:#fff;padding:5px 8px;border-radius:8px;font-size:12px;width:100%;-webkit-appearance:none}
+.fsel option{background:#8b0000;color:#fff}
+
+/* MÉTRICAS */
+.metrics-bar{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:12px 12px 0}
+.met{background:var(--blanco);border-radius:12px;padding:11px 12px;box-shadow:var(--sombra)}
+.met.full{grid-column:1/-1}
+.met-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--sub);margin-bottom:3px}
+.met-val{font-size:18px;font-weight:900;line-height:1.1}
+.met-val.ro{color:var(--brinsa)}.met-val.ve{color:var(--verde)}.met-val.az{color:var(--az2)}.met-val.or{color:var(--oro)}
+
+/* TABS */
+.tabs{display:flex;gap:0;padding:10px 12px 0;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;color:var(--sub);background:transparent;border:none}
+.tab.active{background:var(--brinsa);color:#fff}
+
+/* ACTION BAR */
+.action-bar{display:flex;gap:6px;padding:8px 12px;overflow-x:auto;scrollbar-width:none}
+.action-bar::-webkit-scrollbar{display:none}
+.abtn{border:none;border-radius:20px;cursor:pointer;font-size:11px;font-weight:700;padding:7px 14px;display:flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:var(--sombra)}
+.abtn:active{opacity:.75}
+.abtn-wa{background:#25D366;color:#fff}
+.abtn-print{background:var(--az2);color:#fff}
+.abtn-xl{background:#217346;color:#fff}
+.abtn-info{background:var(--oro);color:#fff}
+
+/* TABLA */
+.tbl-wrap{padding:8px 12px 90px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--blanco);border-radius:12px;overflow:hidden;box-shadow:var(--sombra);font-size:12px}
+thead th{background:var(--az2);color:#fff;padding:8px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+th.right,td.right{text-align:right}
+tbody tr{border-bottom:1px solid var(--gris)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:active{background:#f8e8e8}
+td{padding:7px 8px;white-space:nowrap}
+.grp-hdr td{background:#fdeaea;font-weight:800;font-size:11px;color:var(--brinsa);padding:6px 8px}
+.grp-hdr-ubi td{background:#fff3cd;font-weight:700;font-size:10px;color:#856404;padding:5px 8px 5px 16px}
+tfoot tr{background:var(--gris)}
+tfoot td{padding:8px 8px;font-weight:800;font-size:11px}
+
+/* BADGE */
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:8px;font-weight:800}
+.badge.alto{background:#fde8e8;color:var(--rojo)}
+.badge.medio{background:#fff3cd;color:#856404}
+.badge.ok{background:#e8f5e9;color:#2e7d32}
+
+/* VEND CHIP */
+.vchip{display:inline-flex;align-items:center;gap:4px;background:var(--az2);color:#fff;border-radius:8px;padding:2px 7px;font-size:11px;font-weight:800}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:500;align-items:flex-end}
+.modal-bg.open{display:flex}
+.modal{background:var(--blanco);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:18px 14px 30px}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.modal-hdr h2{font-size:15px;font-weight:800;color:var(--brinsa)}
+.modal-close{background:var(--gris);border:none;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer}
+
+/* INFORME */
+.inf-hdr{background:linear-gradient(135deg,#8b0000,var(--brinsa));color:#fff;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center}
+.inf-title{font-size:17px;font-weight:900}
+.inf-sub{font-size:11px;opacity:.75;margin-top:3px}
+.inf-mets{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px}
+.inf-met{background:var(--fondo);border-radius:10px;padding:9px;text-align:center}
+.inf-met-lbl{font-size:9px;text-transform:uppercase;color:var(--sub);margin-bottom:2px}
+.inf-met-val{font-size:15px;font-weight:900}
+.inf-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:12px}
+.inf-tbl th{background:var(--az2);color:#fff;padding:6px 7px;font-size:10px;text-align:left}
+.inf-tbl th.r,.inf-tbl td.r{text-align:right}
+.inf-tbl td{padding:6px 7px;border-bottom:1px solid var(--gris)}
+.inf-tbl .grp-ubi{background:#fff3cd;font-weight:700;font-size:10px;color:#856404;padding:5px 7px}
+.inf-tbl tfoot td{background:var(--gris);font-weight:800;padding:7px}
+.inf-btns{display:flex;gap:8px}
+.inf-btn{flex:1;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.inf-btn-wa{background:#25D366;color:#fff}
+.inf-btn-print{background:var(--az2);color:#fff}
+
+/* EMPTY */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;text-align:center;gap:14px}
+.empty-ico{font-size:60px}
+.big-btn{background:var(--brinsa);color:#fff;border:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:8px}
+
+/* LOADING */
+.loading{text-align:center;padding:40px;color:var(--sub)}
+.spin{width:28px;height:28px;border:3px solid var(--gris);border-top:3px solid var(--brinsa);border-radius:50%;animation:sp .7s linear infinite;margin:0 auto 10px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media print{.topbar,.tabs,.action-bar,.modal-bg{display:none!important}.tbl-wrap{padding:0}body{background:#fff}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row1">
+    <div class="app-title">
+      🧴 BRINSA
+      <span class="brinsa-badge">Distrileco</span>
+    </div>
+    <div class="topbar-btns">
+      <button class="tbtn tbtn-white" onclick="document.getElementById('fi').click()">📂 Cargar</button>
+      <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="cargarXLSX(this)">
+    </div>
+  </div>
+  <div class="hdr-filtros" id="hdr-filtros" style="display:none">
+    <div class="fgrp">
+      <div class="flabel">Vendedor</div>
+      <select class="fsel" id="fv" onchange="aplicar()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+    <div class="fgrp">
+      <div class="flabel">Ubicación</div>
+      <select class="fsel" id="fu" onchange="aplicar()">
+        <option value="">Todas</option>
+      </select>
+    </div>
+    <div class="fgrp">
+      <div class="flabel">Mes</div>
+      <select class="fsel" id="fm" onchange="aplicar()">
+        <option value="">Todos</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="empty">
+    <div class="empty-ico">🧴</div>
+    <div style="font-size:20px;font-weight:900;color:var(--brinsa)">BRINSA</div>
+    <div style="font-size:13px;color:var(--sub);max-width:260px;line-height:1.5;text-align:center">Carga el Excel exportado desde el server con los datos de ventas BRINSA</div>
+    <button class="big-btn" onclick="document.getElementById('fi').click()">📂 Seleccionar archivo Excel</button>
+    <div style="font-size:11px;color:var(--sub);margin-top:4px">o usa datos de ejemplo →
+      <span style="color:var(--brinsa);cursor:pointer;font-weight:700" onclick="cargarEjemplo()">Demo</span>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg" onclick="cerrarModal(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+// ── CONSTANTES ──
+const CEL={'01':'3117700431','02':'3137671011','03':'3218037260','04':'3204077185','06':'3113896092','07':'3122960169','10':'3232913136','17':'3022107387','22':'3232911903','26':'3108480777','28':'3148010448','32':'3135780204'};
+const NOMBRE={'01':'HAROLD MARIN M.','02':'DANNY DE JESUS TRONCOSO','03':'ALEXANDER SANCHEZ','04':'JUAN CARLOS QUINTANA','06':'LORENZO CASTELLAR','07':'ARGENIS JOSE MEZA','10':'GLEYDIS ENAMORADO','17':'ATENCIA ARAGON R.','22':'JUAN CARLOS ZABALA','26':'REYES ALVAREZ ROY','28':'RUBEN DARIO ABENDANO','32':'JULIETH P RODRIGUEZ'};
+const UBI_LABEL={'ap':'Ace.Pino','b':'Blancos','bq':'Blancos Q.','bs':'Blancos S.','desm':'Desmanchador','deter':'Detergente','doñablanca':'Doña Blanca','lp':'Limpiapiso','lzc':'Lavaza C.','lzl':'Lavaza L.','marina':'Marina','mez':'Mezclado','parrillera':'Parrillera','premium':'Premium','QUINCE':'Quince','sab':'Sab','':(x=>'Sin Ubic.')()};
+
+let DATA=[], FILTRADA=[], tabActiva='vendedor', mesLabel='BRINSA';
+
+// ── UTILS ──
+function fmt(n){return Math.round(n||0).toLocaleString('es-CO');}
+function fmtK(n){n=Math.round(n||0);if(Math.abs(n)>=1000000)return'$'+(n/1000000).toFixed(1)+'M';if(Math.abs(n)>=1000)return'$'+(n/1000).toFixed(0)+'K';return'$'+fmt(n);}
+function pct(d,v){return v>0?d/v*100:0;}
+function badge(p){return p>5?'alto':p>2?'medio':'ok';}
+function vKey(v){return String(v).padStart(2,'0');}
+function cel(v){return CEL[vKey(v)]||CEL[String(v)]||'';}
+function nomV(v){return NOMBRE[vKey(v)]||NOMBRE[String(v)]||'Vendedor '+v;}
+function ubiLabel(u){return UBI_LABEL[u]||(u||'Sin Ubic.');}
+
+// ── CARGAR XLSX ──
+function cargarXLSX(input){
+  const file=input.files[0]; if(!file) return;
+  mesLabel=file.name.replace(/\.xlsx?$/i,'');
+  document.getElementById('app').innerHTML='<div class="loading"><div class="spin"></div>Procesando...</div>';
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const sh=wb.SheetNames[0];
+      const raw=XLSX.utils.sheet_to_json(wb.Sheets[sh],{defval:0});
+      procesarDatos(raw);
+    }catch(err){
+      document.getElementById('app').innerHTML=`<div class="empty"><div class="empty-ico">⚠️</div><div style="color:var(--rojo);font-weight:800">${err.message}</div></div>`;
+    }
+  };
+  rd.readAsArrayBuffer(file);
+}
+
+function procesarDatos(raw){
+  // Normalizar columnas flexibles
+  DATA=raw.map(r=>({
+    vd: String(r.vendedor||r.VENDEDOR||'').trim().padStart(2,'0'),
+    ubi: String(r.ubicacion||r.UBICACION||r.ubicación||'').trim(),
+    ref: String(r.referencia||r.REFERENCIA||'').trim(),
+    nom: String(r.nombre_producto||r.NOMBRE_PRODUCTO||r.nombre||'').trim(),
+    vb: Number(r.ventas_brutas||r.ventas||0),
+    dv: Number(r.devoluciones||r.devol||0),
+    mes: String(r.mes||r.MES||mesLabel).trim()
+  })).filter(r=>r.vd!=='00'&&r.vd!=='vd');
+  // Consolidar duplicados (mismo vd+ubi+ref)
+  const mapa={};
+  DATA.forEach(r=>{
+    const k=`${r.vd}|${r.ubi}|${r.ref}`;
+    if(!mapa[k])mapa[k]={...r};
+    else{mapa[k].vb+=r.vb;mapa[k].dv+=r.dv;}
+  });
+  DATA=Object.values(mapa);
+  document.getElementById('hdr-filtros').style.display='flex';
+  poblarFiltros();
+  aplicar();
+}
+
+// ── DEMO ──
+function cargarEjemplo(){
+  mesLabel='BRINSA-202604';
+  const demo=[
+    {vd:'02',ubi:'bq',ref:'3160',nom:'BLANCOX TRAD 24*500ML',vb:1861453,dv:0},
+    {vd:'02',ubi:'bq',ref:'3238',nom:'BLANCOX TRAD 4*3800ML',vb:1025892,dv:52278},
+    {vd:'02',ubi:'deter',ref:'17766',nom:'DETERGE LIQ BLANCOX R',vb:119328,dv:0},
+    {vd:'02',ubi:'lp',ref:'11432',nom:'LIMPIAPISO BLAN 12*900',vb:450000,dv:22000},
+    {vd:'04',ubi:'bq',ref:'3160',nom:'BLANCOX TRAD 24*500ML',vb:2200000,dv:0},
+    {vd:'04',ubi:'desm',ref:'14580',nom:'DESMANCH RCOLOR 10*500',vb:320000,dv:15000},
+    {vd:'04',ubi:'ap',ref:'3442',nom:'SAL REFISAL 25UND*500G',vb:1023500,dv:0},
+    {vd:'06',ubi:'bq',ref:'3160',nom:'BLANCOX TRAD 24*500ML',vb:3500000,dv:180000},
+    {vd:'06',ubi:'lzc',ref:'13421',nom:'LAVALOZA CREM AVENA 36*250',vb:890000,dv:0},
+    {vd:'03',ubi:'bq',ref:'3238',nom:'BLANCOX TRAD 4*3800ML',vb:750000,dv:0},
+    {vd:'03',ubi:'deter',ref:'13919',nom:'DETERG LIQ BLANC COLOR',vb:595000,dv:14957},
+  ];
+  procesarDatos(demo);
+}
+
+// ── FILTROS ──
+function poblarFiltros(){
+  const vds=[...new Set(DATA.map(d=>d.vd))].sort();
+  const ubis=[...new Set(DATA.map(d=>d.ubi))].sort();
+  const meses=[...new Set(DATA.map(d=>d.mes))].sort();
+  document.getElementById('fv').innerHTML='<option value="">Todos</option>'+vds.map(v=>`<option value="${v}">${v} - ${nomV(v)}</option>`).join('');
+  document.getElementById('fu').innerHTML='<option value="">Todas</option>'+ubis.map(u=>`<option value="${u}">${u||'Sin Ubic.'} - ${ubiLabel(u)}</option>`).join('');
+  document.getElementById('fm').innerHTML='<option value="">Todos</option>'+meses.map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+
+function aplicar(){
+  const v=document.getElementById('fv').value;
+  const u=document.getElementById('fu').value;
+  const m=document.getElementById('fm').value;
+  FILTRADA=DATA.filter(d=>(!v||d.vd===v)&&(u===''||d.ubi===u)&&(!m||d.mes===m));
+  renderApp();
+}
+
+// ── RENDER ──
+function renderApp(){
+  const tb=FILTRADA.reduce((a,d)=>a+d.vb,0);
+  const td=FILTRADA.reduce((a,d)=>a+d.dv,0);
+  const tn=tb-td;
+  const pp=pct(td,tb);
+  const prods=[...new Set(FILTRADA.map(d=>d.ref))].length;
+  document.getElementById('app').innerHTML=`
+    <div class="metrics-bar">
+      <div class="met"><div class="met-lbl">Ventas brutas</div><div class="met-val az">${fmtK(tb)}</div></div>
+      <div class="met"><div class="met-lbl">Devoluciones</div><div class="met-val ro">-${fmtK(td)}</div></div>
+      <div class="met"><div class="met-lbl">Ventas netas</div><div class="met-val ve">${fmtK(tn)}</div></div>
+      <div class="met"><div class="met-lbl">% Dev · Refs</div><div class="met-val or">${pp.toFixed(2)}% <span style="font-size:12px;font-weight:600;color:var(--sub)">· ${prods} refs</span></div></div>
+    </div>
+    <div class="tabs">
+      <button class="tab ${tabActiva==='vendedor'?'active':''}" onclick="setTab('vendedor')">👤 Por vendedor</button>
+      <button class="tab ${tabActiva==='ubicacion'?'active':''}" onclick="setTab('ubicacion')">📦 Por ubicación</button>
+      <button class="tab ${tabActiva==='detalle'?'active':''}" onclick="setTab('detalle')">📋 Detalle</button>
+    </div>
+    <div class="action-bar">
+      <button class="abtn abtn-wa" onclick="enviarWA()">💬 WhatsApp</button>
+      <button class="abtn abtn-info" onclick="abrirInforme()">📄 Informe</button>
+      <button class="abtn abtn-print" onclick="window.print()">🖨️ Imprimir</button>
+      <button class="abtn abtn-xl" onclick="exportarExcel()">📊 Excel</button>
+    </div>
+    <div class="tbl-wrap" id="tbl-wrap"></div>`;
+  renderTabla();
+}
+
+function setTab(t){tabActiva=t;renderApp();}
+
+// ── TABLAS ──
+function renderTabla(){
+  const wrap=document.getElementById('tbl-wrap');
+  if(!FILTRADA.length){wrap.innerHTML='<div class="loading">Sin datos para los filtros seleccionados</div>';return;}
+
+  if(tabActiva==='vendedor'){
+    // Agrupar por vendedor
+    const mv={};
+    FILTRADA.forEach(d=>{
+      if(!mv[d.vd])mv[d.vd]={vd:d.vd,vb:0,dv:0,vn:0,refs:new Set()};
+      mv[d.vd].vb+=d.vb;mv[d.vd].dv+=d.dv;mv[d.vd].vn+=d.vb-d.dv;mv[d.vd].refs.add(d.ref);
+    });
+    const rows=Object.values(mv).sort((a,b)=>b.vb-a.vb);
+    const tV=rows.reduce((a,r)=>a+r.vb,0),tD=rows.reduce((a,r)=>a+r.dv,0),tN=tV-tD;
+    wrap.innerHTML=`<table>
+      <thead><tr><th>Vendedor</th><th class="right">Ventas</th><th class="right">Dev.</th><th class="right">Netas</th><th class="right">%</th><th></th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const p=pct(r.dv,r.vb);
+        const c=cel(r.vd);
+        const msg=generarMsg(r.vd);
+        return`<tr onclick="verDetalleVendedor('${r.vd}')">
+          <td>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="vchip">${r.vd}</span>
+              <div>
+                <div style="font-weight:700;font-size:12px">${nomV(r.vd)}</div>
+                <div style="font-size:10px;color:var(--sub)">${c||'Sin cel'} · ${r.refs.size} refs</div>
+              </div>
+            </div>
+          </td>
+          <td class="right" style="font-weight:700">${fmtK(r.vb)}</td>
+          <td class="right" style="color:var(--rojo)">${r.dv>0?'-'+fmtK(r.dv):'-'}</td>
+          <td class="right" style="color:var(--verde);font-weight:700">${fmtK(r.vn)}</td>
+          <td class="right"><span class="badge ${badge(p)}">${p.toFixed(1)}%</span></td>
+          <td>${c?`<a href="https://wa.me/57${c}?text=${encodeURIComponent(msg)}" target="_blank" onclick="event.stopPropagation()" style="background:#25D366;color:#fff;border-radius:50%;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;text-decoration:none">💬</a>`:''}</td>
+        </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr><td>TOTAL (${rows.length})</td><td class="right">${fmtK(tV)}</td><td class="right" style="color:var(--rojo)">-${fmtK(tD)}</td><td class="right" style="color:var(--verde)">${fmtK(tN)}</td><td class="right">${pct(tD,tV).toFixed(1)}%</td><td></td></tr></tfoot>
+    </table>`;
+
+  } else if(tabActiva==='ubicacion'){
+    // Agrupar por ubicación
+    const mu={};
+    FILTRADA.forEach(d=>{
+      if(!mu[d.ubi])mu[d.ubi]={ubi:d.ubi,vb:0,dv:0,vn:0,refs:new Set()};
+      mu[d.ubi].vb+=d.vb;mu[d.ubi].dv+=d.dv;mu[d.ubi].vn+=d.vb-d.dv;mu[d.ubi].refs.add(d.ref);
+    });
+    const rows=Object.values(mu).sort((a,b)=>b.vb-a.vb);
+    const tV=rows.reduce((a,r)=>a+r.vb,0),tD=rows.reduce((a,r)=>a+r.dv,0),tN=tV-tD;
+    wrap.innerHTML=`<table>
+      <thead><tr><th>Ubicación</th><th class="right">Ventas</th><th class="right">Dev.</th><th class="right">Netas</th><th class="right">%</th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const p=pct(r.dv,r.vb);
+        return`<tr onclick="filtrarPorUbi('${r.ubi}')">
+          <td>
+            <div style="font-weight:700">${r.ubi||'Sin Ubic.'}</div>
+            <div style="font-size:10px;color:var(--sub)">${ubiLabel(r.ubi)} · ${r.refs.size} refs</div>
+          </td>
+          <td class="right" style="font-weight:700">${fmtK(r.vb)}</td>
+          <td class="right" style="color:var(--rojo)">${r.dv>0?'-'+fmtK(r.dv):'-'}</td>
+          <td class="right" style="color:var(--verde);font-weight:700">${fmtK(r.vn)}</td>
+          <td class="right"><span class="badge ${badge(p)}">${p.toFixed(1)}%</span></td>
+        </tr>`;
+      }).join('')}</tbody>
+      <tfoot><tr><td>TOTAL (${rows.length} ubic.)</td><td class="right">${fmtK(tV)}</td><td class="right" style="color:var(--rojo)">-${fmtK(tD)}</td><td class="right" style="color:var(--verde)">${fmtK(tN)}</td><td class="right">${pct(tD,tV).toFixed(1)}%</td></tr></tfoot>
+    </table>`;
+
+  } else {
+    // DETALLE: vendedor → ubicación → productos
+    const vds=[...new Set(FILTRADA.map(d=>d.vd))].sort();
+    let html='<table><thead><tr><th>Referencia / Producto</th><th class="right">Ventas</th><th class="right">Dev.</th><th class="right">Netas</th></tr></thead><tbody>';
+    let tV=0,tD=0;
+    vds.forEach(vd=>{
+      const filaV=FILTRADA.filter(d=>d.vd===vd);
+      const vbV=filaV.reduce((a,d)=>a+d.vb,0),dvV=filaV.reduce((a,d)=>a+d.dv,0);
+      tV+=vbV;tD+=dvV;
+      const c=cel(vd);
+      const msg=generarMsg(vd);
+      html+=`<tr class="grp-hdr"><td colspan="4">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="vchip">${vd}</span>
+            <span>${nomV(vd)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:700;color:var(--verde)">${fmtK(vbV-dvV)}</span>
+            ${c?`<a href="https://wa.me/57${c}?text=${encodeURIComponent(msg)}" target="_blank" style="background:#25D366;color:#fff;border-radius:50%;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;text-decoration:none">💬</a>`:''}
+          </div>
+        </div>
+      </td></tr>`;
+      // Agrupar por ubicación
+      const ubis=[...new Set(filaV.map(d=>d.ubi))].sort();
+      ubis.forEach(ubi=>{
+        const filaU=filaV.filter(d=>d.ubi===ubi).sort((a,b)=>b.vb-a.vb);
+        const vbU=filaU.reduce((a,d)=>a+d.vb,0),dvU=filaU.reduce((a,d)=>a+d.dv,0);
+        html+=`<tr class="grp-hdr-ubi"><td colspan="4">📦 ${ubi||'Sin Ubic.'} — ${ubiLabel(ubi)} · $${fmt(vbU-dvU)} neto</td></tr>`;
+        filaU.forEach(d=>{
+          const vn=d.vb-d.dv;
+          html+=`<tr>
+            <td style="padding-left:20px">
+              <div style="font-size:11px;font-weight:600">${d.nom||d.ref}</div>
+              <div style="font-size:10px;color:var(--sub)">${d.ref}</div>
+            </td>
+            <td class="right" style="font-size:11px">${d.vb>0?fmtK(d.vb):'-'}</td>
+            <td class="right" style="font-size:11px;color:var(--rojo)">${d.dv>0?'-'+fmtK(d.dv):'-'}</td>
+            <td class="right" style="font-size:11px;color:var(--verde);font-weight:700">${fmtK(vn)}</td>
+          </tr>`;
+        });
+      });
+    });
+    html+=`</tbody><tfoot><tr><td>TOTAL</td><td class="right">${fmtK(tV)}</td><td class="right" style="color:var(--rojo)">-${fmtK(tD)}</td><td class="right" style="color:var(--verde)">${fmtK(tV-tD)}</td></tr></tfoot></table>`;
+    wrap.innerHTML=html;
+  }
+}
+
+function filtrarPorUbi(u){
+  document.getElementById('fu').value=u;
+  tabActiva='vendedor';
+  aplicar();
+}
+
+function verDetalleVendedor(vd){
+  document.getElementById('fv').value=vd;
+  tabActiva='detalle';
+  aplicar();
+}
+
+// ── GENERAR MENSAJE WA ──
+function generarMsg(vd){
+  const filas=FILTRADA.filter(d=>d.vd===vd);
+  const tV=filas.reduce((a,d)=>a+d.vb,0);
+  const tD=filas.reduce((a,d)=>a+d.dv,0);
+  const tN=tV-tD;
+  const pp=pct(tD,tV);
+
+  let msg=`🧴 *INFORME BRINSA — ${mesLabel}*\n`;
+  msg+=`Vendedor: *${vd} - ${nomV(vd)}*\n\n`;
+
+  // Agrupar por ubicación, ordenar por ventas desc
+  const ubis=[...new Set(filas.map(d=>d.ubi))];
+  ubis.forEach(ubi=>{
+    const fils=filas.filter(d=>d.ubi===ubi).sort((a,b)=>b.vb-a.vb);
+    const vbU=fils.reduce((a,d)=>a+d.vb,0),dvU=fils.reduce((a,d)=>a+d.dv,0);
+    msg+=`📦 *${ubi||'Sin Ubic.'} - ${ubiLabel(ubi)}* (Neto: $${fmt(vbU-dvU)})\n`;
+    fils.forEach(d=>{
+      msg+=`  • ${d.nom||d.ref}: $${fmt(d.vb)}`;
+      if(d.dv>0)msg+=` | Dev: -$${fmt(d.dv)}`;
+      msg+=`\n`;
+    });
+    msg+=`\n`;
+  });
+
+  msg+=`📊 *RESUMEN:*\n`;
+  msg+=`Ventas brutas: $${fmt(tV)}\n`;
+  msg+=`Devoluciones: -$${fmt(tD)}\n`;
+  msg+=`*Ventas netas: $${fmt(tN)}*\n`;
+  msg+=`% Devolución: ${pp.toFixed(2)}%\n\n`;
+  msg+=`_Distrileco Caucasia · Vibras Positivas HM_`;
+  return msg;
+}
+
+// ── WHATSAPP ──
+function enviarWA(){
+  const vd=document.getElementById('fv').value;
+  if(vd){
+    const c=cel(vd);
+    if(!c){alert('Este vendedor no tiene celular registrado');return;}
+    window.open(`https://wa.me/57${c}?text=${encodeURIComponent(generarMsg(vd))}`,'_blank');
+  } else {
+    // Lista de todos los vendedores
+    const mv={};
+    FILTRADA.forEach(d=>{if(!mv[d.vd])mv[d.vd]={vd:d.vd,vb:0};mv[d.vd].vb+=d.vb;});
+    const vds=Object.values(mv).sort((a,b)=>b.vb-a.vb);
+    const lista=vds.map(r=>{
+      const c=cel(r.vd);
+      const msg=generarMsg(r.vd);
+      return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--gris)">
+        <div><span class="vchip">${r.vd}</span> <span style="font-size:13px;font-weight:600;margin-left:6px">${nomV(r.vd)}</span><br><span style="font-size:11px;color:var(--sub)">${fmtK(r.vb)}</span></div>
+        ${c?`<a href="https://wa.me/57${c}?text=${encodeURIComponent(msg)}" target="_blank" style="background:#25D366;color:#fff;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:800;text-decoration:none">💬 Enviar</a>`:'<span style="font-size:11px;color:var(--sub)">Sin celular</span>'}
+      </div>`;
+    }).join('');
+    document.getElementById('modal-content').innerHTML=`
+      <div class="modal-hdr"><h2>💬 Enviar a vendedor</h2><button class="modal-close" onclick="cerrarModal2()">✕</button></div>
+      <p style="font-size:12px;color:var(--sub);margin-bottom:10px">Selecciona el vendedor:</p>${lista}`;
+    document.getElementById('modal-bg').classList.add('open');
+  }
+}
+
+// ── INFORME MODAL ──
+function abrirInforme(){
+  const vd=document.getElementById('fv').value;
+  const tV=FILTRADA.reduce((a,d)=>a+d.vb,0);
+  const tD=FILTRADA.reduce((a,d)=>a+d.dv,0);
+  const tN=tV-tD;
+  const pp=pct(tD,tV);
+  const prods=[...new Set(FILTRADA.map(d=>d.ref))].length;
+
+  // Tabla por vendedor
+  const mv={};
+  FILTRADA.forEach(d=>{if(!mv[d.vd])mv[d.vd]={vd:d.vd,vb:0,dv:0,vn:0};mv[d.vd].vb+=d.vb;mv[d.vd].dv+=d.dv;mv[d.vd].vn+=d.vb-d.dv;});
+  const rows=Object.values(mv).sort((a,b)=>b.vb-a.vb);
+
+  // Tabla por ubicación
+  const mu={};
+  FILTRADA.forEach(d=>{if(!mu[d.ubi])mu[d.ubi]={ubi:d.ubi,vb:0,dv:0,vn:0};mu[d.ubi].vb+=d.vb;mu[d.ubi].dv+=d.dv;mu[d.ubi].vn+=d.vb-d.dv;});
+  const rowsU=Object.values(mu).sort((a,b)=>b.vb-a.vb);
+
+  const c=vd?cel(vd):'';
+  document.getElementById('modal-content').innerHTML=`
+    <div class="modal-hdr"><h2>📄 Informe BRINSA</h2><button class="modal-close" onclick="cerrarModal2()">✕</button></div>
+    <div class="inf-hdr">
+      <div class="inf-title">🧴 BRINSA — ${mesLabel}</div>
+      <div class="inf-sub">${vd?`Vendedor: ${vd} - ${nomV(vd)}`:'Todos los vendedores'}</div>
+    </div>
+    <div class="inf-mets">
+      <div class="inf-met"><div class="inf-met-lbl">Ventas brutas</div><div class="inf-met-val" style="color:var(--az2)">$${fmt(tV)}</div></div>
+      <div class="inf-met"><div class="inf-met-lbl">Devoluciones</div><div class="inf-met-val" style="color:var(--rojo)">-$${fmt(tD)}</div></div>
+      <div class="inf-met"><div class="inf-met-lbl">Ventas netas</div><div class="inf-met-val" style="color:var(--verde)">$${fmt(tN)}</div></div>
+      <div class="inf-met"><div class="inf-met-lbl">% Dev · Refs</div><div class="inf-met-val" style="color:var(--oro)">${pp.toFixed(2)}% · ${prods}</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--az2);margin-bottom:6px">📊 Por vendedor</div>
+    <table class="inf-tbl">
+      <thead><tr><th>Cod.</th><th>Nombre</th><th class="r">Ventas</th><th class="r">Dev.</th><th class="r">Netas</th><th class="r">%</th></tr></thead>
+      <tbody>${rows.map(r=>{const p=pct(r.dv,r.vb);return`<tr><td>${r.vd}</td><td>${nomV(r.vd)}</td><td class="r">$${fmt(r.vb)}</td><td class="r" style="color:var(--rojo)">${r.dv>0?'-$'+fmt(r.dv):'-'}</td><td class="r" style="color:var(--verde);font-weight:800">$${fmt(r.vn)}</td><td class="r">${p.toFixed(1)}%</td></tr>`;}).join('')}</tbody>
+      <tfoot><tr><td colspan="2">TOTAL</td><td class="r">$${fmt(tV)}</td><td class="r">-$${fmt(tD)}</td><td class="r">$${fmt(tN)}</td><td class="r">${pp.toFixed(1)}%</td></tr></tfoot>
+    </table>
+    <div style="font-size:11px;font-weight:700;color:var(--az2);margin-bottom:6px">📦 Por ubicación</div>
+    <table class="inf-tbl">
+      <thead><tr><th>Ubic.</th><th>Descripción</th><th class="r">Ventas</th><th class="r">Dev.</th><th class="r">Netas</th></tr></thead>
+      <tbody>${rowsU.map(r=>`<tr><td>${r.ubi||'-'}</td><td>${ubiLabel(r.ubi)}</td><td class="r">$${fmt(r.vb)}</td><td class="r" style="color:var(--rojo)">${r.dv>0?'-$'+fmt(r.dv):'-'}</td><td class="r" style="color:var(--verde);font-weight:800">$${fmt(r.vn)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr><td colspan="2">TOTAL</td><td class="r">$${fmt(tV)}</td><td class="r">-$${fmt(tD)}</td><td class="r">$${fmt(tN)}</td></tr></tfoot>
+    </table>
+    <div class="inf-btns">
+      ${c?`<button class="inf-btn inf-btn-wa" onclick="window.open('https://wa.me/57${c}?text='+encodeURIComponent(generarMsg('${vd}')),'_blank')">💬 WhatsApp</button>`:''}
+      <button class="inf-btn inf-btn-print" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+    <div style="text-align:center;font-size:10px;color:var(--sub);margin-top:14px">Desarrollada por Vibras Positivas HM — Derechos de Autor Reservados · Colombia 2026</div>`;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+// ── EXCEL ──
+function exportarExcel(){
+  const wb=XLSX.utils.book_new();
+  // Por vendedor
+  const mv={};
+  FILTRADA.forEach(d=>{if(!mv[d.vd])mv[d.vd]={Vendedor:d.vd,Nombre:nomV(d.vd),'Ventas Brutas':0,'Devoluciones':0,'Ventas Netas':0};mv[d.vd]['Ventas Brutas']+=d.vb;mv[d.vd]['Devoluciones']+=d.dv;mv[d.vd]['Ventas Netas']+=d.vb-d.dv;});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(Object.values(mv).sort((a,b)=>b['Ventas Brutas']-a['Ventas Brutas'])),'Por Vendedor');
+  // Por ubicación
+  const mu={};
+  FILTRADA.forEach(d=>{if(!mu[d.ubi])mu[d.ubi]={Ubicacion:d.ubi||'Sin Ubic.',Descripcion:ubiLabel(d.ubi),'Ventas Brutas':0,'Devoluciones':0,'Ventas Netas':0};mu[d.ubi]['Ventas Brutas']+=d.vb;mu[d.ubi]['Devoluciones']+=d.dv;mu[d.ubi]['Ventas Netas']+=d.vb-d.dv;});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(Object.values(mu).sort((a,b)=>b['Ventas Brutas']-a['Ventas Brutas'])),'Por Ubicacion');
+  // Detalle
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet([...FILTRADA].sort((a,b)=>b.vb-a.vb).map(d=>({Vendedor:d.vd,Nombre:nomV(d.vd),Ubicacion:d.ubi||'Sin Ubic.',Referencia:d.ref,Producto:d.nom,'Ventas Brutas':d.vb,'Devoluciones':d.dv,'Ventas Netas':d.vb-d.dv,'% Dev':pct(d.dv,d.vb).toFixed(2)+'%'}))),'Detalle');
+  XLSX.writeFile(wb,`BRINSA_${mesLabel}_${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
+// ── MODAL ──
+function cerrarModal(e){if(e.target===document.getElementById('modal-bg'))cerrarModal2();}
+function cerrarModal2(){document.getElementById('modal-bg').classList.remove('open');}
+</script>
+</body>
+</html>
