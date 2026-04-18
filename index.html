@@ -129,6 +129,7 @@ tfoot td{padding:8px 8px;font-weight:800;font-size:11px}
       <span class="brinsa-badge">Distrileco</span>
     </div>
     <div class="topbar-btns">
+      <button class="tbtn tbtn-white" onclick="cargarDesdeGitHub()">🔄 Actualizar</button>
       <button class="tbtn tbtn-white" onclick="document.getElementById('fi').click()">📂 Cargar</button>
       <input type="file" id="fi" accept=".xlsx,.xls" style="display:none" onchange="cargarXLSX(this)">
     </div>
@@ -156,15 +157,7 @@ tfoot td{padding:8px 8px;font-weight:800;font-size:11px}
 </div>
 
 <div id="app">
-  <div class="empty">
-    <div class="empty-ico">🧴</div>
-    <div style="font-size:20px;font-weight:900;color:var(--brinsa)">BRINSA</div>
-    <div style="font-size:13px;color:var(--sub);max-width:260px;line-height:1.5;text-align:center">Carga el Excel exportado desde el server con los datos de ventas BRINSA</div>
-    <button class="big-btn" onclick="document.getElementById('fi').click()">📂 Seleccionar archivo Excel</button>
-    <div style="font-size:11px;color:var(--sub);margin-top:4px">o usa datos de ejemplo →
-      <span style="color:var(--brinsa);cursor:pointer;font-weight:700" onclick="cargarEjemplo()">Demo</span>
-    </div>
-  </div>
+  <div class="loading"><div class="spin"></div>Cargando datos BRINSA...</div>
 </div>
 
 <div class="modal-bg" id="modal-bg" onclick="cerrarModal(event)">
@@ -172,6 +165,34 @@ tfoot td{padding:8px 8px;font-weight:800;font-size:11px}
 </div>
 
 <script>
+// ── URL DATOS GITHUB ──
+const EXCEL_URL = 'https://raw.githubusercontent.com/haroldco45/brinsa/main/brinsamensual.xlsx';
+
+// Cargar automáticamente al iniciar
+window.addEventListener('load', () => cargarDesdeGitHub());
+
+async function cargarDesdeGitHub(){
+  try {
+    document.getElementById('app').innerHTML='<div class="loading"><div class="spin"></div>Cargando datos BRINSA...</div>';
+    const resp = await fetch(EXCEL_URL + '?t=' + Date.now());
+    if(!resp.ok) throw new Error('No se pudo cargar el archivo ('+resp.status+')');
+    const buf = await resp.arrayBuffer();
+    const wb = XLSX.read(buf, {type:'array'});
+    const sh = wb.SheetNames.find(s=>s.toLowerCase().includes('brinsa'))||wb.SheetNames[0];
+    const raw = XLSX.utils.sheet_to_json(wb.Sheets[sh], {defval:0});
+    mesLabel = 'BRINSA';
+    procesarDatos(raw);
+    document.getElementById('hdr-filtros').style.display='flex';
+  } catch(err){
+    document.getElementById('app').innerHTML=`<div class="empty">
+      <div class="empty-ico">⚠️</div>
+      <div style="font-size:14px;font-weight:800;color:var(--rojo);margin-bottom:8px">Error al cargar</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:16px">${err.message}</div>
+      <button class="big-btn" onclick="document.getElementById('fi').click()">📂 Cargar manualmente</button>
+    </div>`;
+  }
+}
+
 // ── CONSTANTES ──
 const CEL={'01':'3117700431','02':'3137671011','03':'3218037260','04':'3204077185','06':'3113896092','07':'3122960169','10':'3232913136','17':'3022107387','22':'3232911903','26':'3108480777','28':'3148010448','32':'3135780204'};
 const NOMBRE={'01':'HAROLD MARIN M.','02':'DANNY DE JESUS TRONCOSO','03':'ALEXANDER SANCHEZ','04':'JUAN CARLOS QUINTANA','06':'LORENZO CASTELLAR','07':'ARGENIS JOSE MEZA','10':'GLEYDIS ENAMORADO','17':'ATENCIA ARAGON R.','22':'JUAN CARLOS ZABALA','26':'REYES ALVAREZ ROY','28':'RUBEN DARIO ABENDANO','32':'JULIETH P RODRIGUEZ'};
